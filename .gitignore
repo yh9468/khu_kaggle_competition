@@ -1,0 +1,19 @@
+
+# Created by https://www.gitignore.io/api/python,visualstudiocode
+# Edit at https://www.gitignore.io/?templates=python,visualstudiocode
+
+### Python ###
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+###################### User ignore
+test_data.csv
+submit.csv
+test_data_label.csv
+test_data_label_sample.csv
+test_data_raw.csv
+train_data.csv
+
+**/logs/*
