@@ -9,11 +9,10 @@ __pycache__/
 *$py.class
 
 ###################### User ignore
-test_data.csv
+data/
+dataset/
+label.csv
 submit.csv
-test_data_label.csv
-test_data_label_sample.csv
-test_data_raw.csv
-train_data.csv
+model_best.pth.tar
 
 **/logs/*

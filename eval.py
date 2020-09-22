@@ -1,21 +1,23 @@
 import torch
 import pandas as pd
-import dataset
 import argparse
 import model
+import time
+import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 from utils import AverageMeter, accuracy
+
 
 def eval(args):
     test_transform = transforms.Compose([
         transforms.ToTensor()
     ])
 
-    test_dataset = dataset.DatasetMNIST("./test_data.csv", transform=test_transform)
+    test_dataset = torchvision.datasets.ImageFolder("./dataset/test", transform=test_transform)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, num_workers=0, shuffle=False)
 
-    net = model.ResNet18()
+    net = model.resnet20()
     if args.cuda:
         net = net.cuda()
         net.load_state_dict(torch.load(args.weight_file))
@@ -30,7 +32,7 @@ def eval(args):
         output = torch.argmax(output, dim=1)
         Category = Category + output.tolist()
 
-    Id = list(range(1, 10001))
+    Id = list(range(0, 8000))
     samples = {
        'Id': Id,
        'Category':Category 

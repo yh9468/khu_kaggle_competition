@@ -1,8 +1,8 @@
 import torch
+import torchvision
 import argparse
 import model
 import time
-import dataset
 import numpy as np
 import torch.nn as nn
 import torchvision.transforms as transforms
@@ -11,25 +11,31 @@ from utils import AverageMeter, accuracy
 from torch.utils.data.sampler import SubsetRandomSampler
 
 def main(args):
-    net = model.ResNet18()
+    net = model.resnet20()
 
-    optimizer = torch.optim.SGD(net.parameters(), lr=args.learning_rate, momentum=0.9, nesterov=True)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100,150], gamma=0.1)
+    optimizer = torch.optim.SGD(net.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=5e-4, nesterov=True)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [50, 75], gamma=args.gamma)
     criterion = torch.nn.CrossEntropyLoss()
 
     if args.cuda:
         net = net.cuda()
         criterion = criterion.cuda()
+    pytorch_total_params = sum(p.numel() for p in net.parameters())
+    print(f"number of parameters : {pytorch_total_params}")
 
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
     train_transform = transforms.Compose([
-        transforms.ToTensor()
+        transforms.ToTensor(),
+        normalize
     ])
     test_transform = transforms.Compose([
-        transforms.ToTensor()
+        transforms.ToTensor(),
+        normalize
     ])
 
-    train_dataset = dataset.DatasetMNIST("./train_data.csv", transform=train_transform)
-    val_dataset = dataset.DatasetMNIST("./train_data.csv", transform=test_transform)
+    train_dataset = torchvision.datasets.ImageFolder("./dataset/train", transform=train_transform)
+    val_dataset = torchvision.datasets.ImageFolder("./dataset/train", transform=test_transform)
 
     validation_ratio = 0.1
     random_seed = 10
@@ -48,17 +54,18 @@ def main(args):
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=0, sampler=train_sampler)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=0, sampler=valid_sampler)
 
-
     max_acc = 0
 
     for epoch in range(args.epoch):
         print("----- epoch : {} -----".format(epoch))
         train(train_loader, epoch, net, optimizer, criterion, args)
-        top1 = validate(val_loader, epoch, net, optimizer, criterion, args)
+        top1 = validate(val_loader, epoch, net, criterion, args)
         scheduler.step()
+        print(f"epoch accuracy : {top1}\n")
 
         if max_acc <= top1:
             torch.save(net.state_dict(), "./model_best.pth.tar")
+            max_acc = top1
 
     print(f"Best Accuracy : {max_acc}")
 
@@ -94,7 +101,7 @@ def train(train_loader, epoch, net, optimizer, criterion, args):
         batch_time.update(time.time() - end)
         end = time.time()
 
-        if idx % 50 == 0:
+        if idx % 10 == 0:
             print('Epoch: [{0}][{1}/{2}]\t'
                         'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                         'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
@@ -104,7 +111,7 @@ def train(train_loader, epoch, net, optimizer, criterion, args):
                             loss=losses, top1=top1))
 
 
-def validate(val_loader, epoch, net, optimizer, criterion, args):
+def validate(val_loader, epoch, net, criterion, args):
     with torch.no_grad():
         batch_time = AverageMeter()
         losses = AverageMeter()
@@ -146,10 +153,10 @@ def validate(val_loader, epoch, net, optimizer, criterion, args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gamma", default=0.1, help="scheduler gamma")
-    parser.add_argument("--batch-size", default=256, help="train config file")
+    parser.add_argument("--gamma", default=0.1, help="scheduler of SGD")
+    parser.add_argument("--batch-size", default=128, help="train config file")
     parser.add_argument("--learning-rate", default=0.1, help="learing rate of optimizer")
-    parser.add_argument("--epoch", default=200, help="default")
+    parser.add_argument("--epoch", default=100, help="default")
     parser.add_argument("--cuda", action='store_true', help="use GPU ")
     args = parser.parse_args()
     main(args)
